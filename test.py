@@ -2,13 +2,18 @@ from random import randint
 
 import pyxel
 
+TILE_SIZE = 8
+MAP_X = 160
+MAP_Y = 120
 class App:
     def __init__(self):
-        pyxel.init(160, 120, caption="Hello Pyxel")
+        pyxel.init(MAP_X, MAP_Y, caption="Hello Pyxel")
         pyxel.load("sample.pyxres")
         self.score = 0
+        self.atr = 0
+        self.gameover = 0
         self.player_x = 72
-        self.player_y = -1
+        self.player_y = MAP_Y - TILE_SIZE*4
         self.player_vy = 0
         self.floor = [0, 90, True]
         self.movefloor = [(randint(0, 104),randint(60, 70), True)]
@@ -17,6 +22,9 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def update(self):
+        if self.gameover:
+            return
+        
         if pyxel.btnp(pyxel.KEY_ESCAPE):
             pyxel.quit()
 
@@ -24,7 +32,7 @@ class App:
 
         self.score += 1
 
-        self.floor[0] = self.update_floor(0, 90, True)
+        self.floor[0] = self.update_floor(0, MAP_Y - TILE_SIZE * 2, True)
 
         for i, v in enumerate(self.movefloor):
             self.movefloor[i] = self.update_movefloor(*v)
@@ -36,19 +44,19 @@ class App:
             self.item[i] = self.update_item(*v)
 
     def update_player(self):
-        #Shiftキーでジャンプ
-        #if pyxel.btn(pyxel.KEY_SPACE) :
-        #    self.player_y += -15
         #左へ進む
         if pyxel.btn(pyxel.KEY_LEFT):
             self.player_x = max(self.player_x - 2, 0)
+            self.atr = 0
         #右へ進む
         if pyxel.btn(pyxel.KEY_RIGHT):
             self.player_x = min(self.player_x + 2, pyxel.width - 16)
+            self.atr = 1
             
         #重力
         self.player_y += self.player_vy
         self.player_vy = min(self.player_vy + 1, 6)
+        
     
     def update_floor(self, x, y, is_active):
         #当たり判定
@@ -64,8 +72,8 @@ class App:
             if pyxel.btn(pyxel.KEY_SPACE) :
                 self.player_vy += -10
             else:
-                #self.player_x += x
-                self.player_y -= 1 
+                #ブロックの上に着地
+                self.player_y = MAP_Y - TILE_SIZE*4
                 self.player_vy = 0
 
         return x, y, is_active
@@ -86,14 +94,14 @@ class App:
                 if pyxel.btn(pyxel.KEY_SPACE) :
                     self.player_vy += -10
                 else:
-                    self.player_y -= 1 
+                    self.player_y = y  - TILE_SIZE *2
                     self.player_vy = 0
             
             #当たり判定左から
             if (self.player_x + 16 <= x + 40
                 and self.player_x + 16 >= x
                 and self.player_y <= y + 8
-                and self.player_y + 16 >= y
+                and self.player_y + 16 > y
                 ):
                 
                 self.player_x -= 2
@@ -102,14 +110,11 @@ class App:
             elif (self.player_x <= x + 40
                 and self.player_x >= x
                 and self.player_y <= y + 8
-                and self.player_y + 16 >= y
+                and self.player_y + 16 > y
                 ):
                 
                 self.player_x += 2
 
-
-        #フロアを左に
-        #x -= 4
 
         #左に行った場合、右に戻している。
         if x < -40:
@@ -125,6 +130,7 @@ class App:
                 self.score -= 100
             elif self.score < 100:
                 self.score = 0
+                self.gameover = 1
 
             y -= 140
 
@@ -153,15 +159,16 @@ class App:
 
     
     def draw(self):
-        pyxel.cls(15)
+        #pyxel.cls(15)
+        pyxel.bltm(0, 0, 0, 0, 0, MAP_X, MAP_Y)
         #pyxel.text(55, 41, "Hello World!", pyxel.frame_count % 16)
         # draw player
-        pyxel.blt(self.player_x, self.player_y, 0, 0, 0, 16, 16, 12)
+        pyxel.blt(self.player_x, self.player_y, 0, 0, 0, 16 * (1 - (self.atr << 1)), 16, 12)
         #pyxel.blt(10, 10, 0, 0 , 0, 16, 16, 12)
 
         # draw floors
         #for x, y, is_active in self.floor:
-        pyxel.blt(0, 90, 0, 0, 40, 160, 5, 12)
+        #pyxel.blt(0, 90, 0, 0, 40, 160, 5, 12)
 
         for x, y, is_active in self.movefloor:
             pyxel.blt(x, y, 0, 0, 16, 40, 8, 12)
@@ -182,6 +189,11 @@ class App:
         s = "SCORE {:>4}".format(self.score)
         pyxel.text(5, 4, s, 1)
         pyxel.text(4, 4, s, 7)
+
+        #ゲームオーバー中央表示
+        if self.gameover:
+            pyxel.text((MAP_X >> 1 )- 20, (MAP_Y >> 1) + 5, "GAME OVER", 7)
+
 
 
 
